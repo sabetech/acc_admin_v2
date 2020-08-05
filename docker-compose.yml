@@ -1,0 +1,76 @@
+version: '3'
+services:
+    php-fpm:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        image: laravel-react-admin-php-fpm
+        container_name: laravel-react-admin-php-fpm
+        working_dir: /var/www/html
+        restart: unless-stopped
+        env_file:
+            - .env
+
+    scheduler:
+        image: laravel-react-admin-php-fpm
+        container_name: laravel-react-admin-scheduler
+        depends_on:
+            - php-fpm
+        command: laravel-scheduler
+        env_file:
+            - .env
+        volumes:
+            - ./:/var/www/html
+
+    queuer:
+        image: laravel-react-admin-php-fpm
+        container_name: laravel-react-admin-queuer
+        depends_on:
+            - php-fpm
+        command: laravel-queuer
+        env_file:
+            - .env
+        volumes:
+            - ./:/var/www/html
+
+    webserver:
+        image: nginx:alpine
+        container_name: laravel-react-admin-webserver
+        working_dir: /var/www/html
+        restart: unless-stopped
+        depends_on:
+            - php-fpm
+        ports:
+            - '80:80'
+            - '443:443'
+        volumes:
+            - ./:/var/www/html
+            - ./nginx.conf:/etc/nginx/conf.d/nginx.conf
+
+    db:
+        image: mysql:5.7
+        container_name: laravel-react-admin-db
+        restart: unless-stopped
+        depends_on:
+            - php-fpm
+        ports:
+            - '3306:3306'
+        environment:
+            MYSQL_DATABASE: laravel-react-admin
+            MYSQL_ROOT_PASSWORD: secret
+        volumes:
+            - ~/.laravel-react-admin-data:/var/lib/mysql
+
+    db-admin:
+        image: phpmyadmin/phpmyadmin
+        container_name: laravel-react-admin-db-admin
+        restart: unless-stopped
+        depends_on:
+            - db
+        links:
+            - db
+        volumes:
+            - ~/.laravel-react-admin-db-admin/sessions:/sessions
+        environment:
+            PMA_HOST: laravel-react-admin-db
+            PMA_PORT: 3306
